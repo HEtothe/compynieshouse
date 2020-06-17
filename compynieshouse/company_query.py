@@ -3,6 +3,7 @@ from web_connect.interpret_response.interpret_json_response import (
 JsonResponseInterpreter)
 from web_connect.RESTConnect.basicAuth import BasicAuth
 
+
 class CHCompany:
 
     """
@@ -30,7 +31,7 @@ class CHCompany:
 
     """
 
-    def __init__(self, appKey, company_query_string, by="id"):
+    def __init__(self, appKey: str, company_query_string: str, by="id"):
 
         assert by == "id" or by == "friendly_string", \
             "CHCompany constructor accepts only 'friendly_string' to retrieve"\
@@ -52,7 +53,7 @@ class CHCompany:
         self.retrieve_company_data()
 
         # Turn the data into a JSON dictionary
-        self.interpret_company_data()
+        self.parse_company_data()
 
     def build_url(self):
         """
@@ -86,23 +87,54 @@ class CHCompany:
 
         #Instantiate RetrievedResponse class
         self.rr = RetrievedResponse(url=self.request_url,
-                                    **self.request_kwargs)
+                                    request_kwargs=self.request_kwargs)
 
         # Request the data and validate the response
+        # This is where HTTP reponse errors will be raised and handled by the
+        # getResponse method of RetrievedResponse instance rr
 
-        self.rr.getValidate(timeout=timeout)
+        try:
+            self.rr.getValidate(timeout=timeout)
+
 
         # Create the ch_response attribute as a view of the RetrievedResponse
         # .response attribute
 
         self.ch_response = self.rr.response
 
-    def interpret_company_data(self):
+    def parse_company_data(self, zero_results_suppression=False):
+        """
+        Creates instance of JsonResponseInterpreter class as self.jri
+        Creates attribute self.jsonDict as either:
 
+        1.  Copy of the returned dictionary, if you searched by companies house
+            company number
+
+        2.  List of company-level dictionaries returned by the friendly_string
+            search, if you searched by friendly_string
+        """
         self.jri = JsonResponseInterpreter(self.ch_response)
 
-# rr = RetrievedResponse("https://api.companieshouse.gov.uk/search/companies",
-#         headers = {"Authorization":"***REMOVED***:"},
-#         params={"q":"Alphabet"})
-#
-# ri = JsonResponseInterpreter(rr.response)
+        # If we searched by the friendly string, then we get a list of dictionaries
+        # each relating to a company on their books. This list, which is what we
+        # want, is stored as the "items" item.
+
+        if self.by == "friendly_string":
+            # This will be an empty list if the input string did not return
+            # any companies.
+            self.jsonDict = self.jri.json_tree_traverse(["items"])
+
+            if self.jri.jsonDict["total_results"] <= 0 \
+                        and not zero_results_suppression:
+                print("""We created a jsonDict of your results, but the dict
+                itself is empty. This is probably due to a company name that the
+                Companies House search engine can't find any matches for.
+                """)
+
+            else:
+                pass
+
+        # We don't need to extract the underlying list, all we need is the
+        # dict of the single company that we searched.
+        else:
+            self.jsonDict = self.jri.jsonDict.copy()
