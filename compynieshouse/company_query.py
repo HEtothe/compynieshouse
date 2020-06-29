@@ -1,7 +1,7 @@
-from web_connect.retrieve_response.retrieve_response import RetrievedResponse
-from web_connect.interpret_response.interpret_json_response import (
+from datagrab.retrieve_response.retrieve_response import RetrievedResponse
+from datagrab.interpret_response.interpret_json_response import (
 JsonResponseInterpreter)
-from web_connect.RESTConnect.basicAuth import BasicAuth
+from datagrab.RESTConnect.basicAuth import BasicAuth
 
 
 class CHCompany:
