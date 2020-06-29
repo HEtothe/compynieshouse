@@ -29,9 +29,17 @@ class CHCompany:
         Accepts: "id" if you are using the companies house ID or "friendly_string"
         if you are using the name of the target company
 
+        zero_results_suppression: bool
+        Accepts: True or False
+        Default: False
+        When set to true, this prints some troubleshooting tips if you run a
+        company search which returns zero results. Setting to True is not
+        recommended for production code.
+
     """
 
-    def __init__(self, appKey: str, company_query_string: str, by="id"):
+    def __init__(self, appKey: str, company_query_string: str, by="id",
+                zero_results_suppression=False):
 
         assert by == "id" or by == "friendly_string", \
             "CHCompany constructor accepts only 'friendly_string' to retrieve"\
@@ -45,6 +53,7 @@ class CHCompany:
 
         self.company_query_string = company_query_string
         self.by                   = by
+        self.zero_results_suppression = zero_results_suppression
 
         #Create the request url
         self.build_url()
@@ -93,8 +102,7 @@ class CHCompany:
         # This is where HTTP reponse errors will be raised and handled by the
         # getResponse method of RetrievedResponse instance rr
 
-        try:
-            self.rr.getValidate(timeout=timeout)
+        self.rr.getValidate(timeout=timeout)
 
 
         # Create the ch_response attribute as a view of the RetrievedResponse
@@ -102,7 +110,7 @@ class CHCompany:
 
         self.ch_response = self.rr.response
 
-    def parse_company_data(self, zero_results_suppression=False):
+    def parse_company_data(self):
         """
         Creates instance of JsonResponseInterpreter class as self.jri
         Creates attribute self.jsonDict as either:
@@ -125,7 +133,7 @@ class CHCompany:
             self.jsonDict = self.jri.json_tree_traverse(["items"])
 
             if self.jri.jsonDict["total_results"] <= 0 \
-                        and not zero_results_suppression:
+                        and not self.zero_results_suppression:
                 print("""We created a jsonDict of your results, but the dict
                 itself is empty. This is probably due to a company name that the
                 Companies House search engine can't find any matches for.
