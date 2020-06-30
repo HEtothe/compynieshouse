@@ -4,7 +4,7 @@ JsonResponseInterpreter)
 from datagrab.RESTConnect.basicAuth import BasicAuth
 
 
-class CHCompany:
+class CHCompany(JsonResponseInterpreter):
 
     """
     Companies House Company
@@ -61,8 +61,30 @@ class CHCompany:
         # Get the data
         self.retrieve_company_data()
 
-        # Turn the data into a JSON dictionary
-        self.parse_company_data()
+        # Instantiate JsonResponseInterpreter class
+        super().__init__(self.ch_response)
+
+        # Remove superfluous information from the JSON tree
+        # If we searched by the friendly string, then we get a list of dictionaries
+        # each relating to a company on their books. This list, which is what we
+        # want, is stored as the "items" item.
+
+        if self.by == "friendly_string" and self.jsonDict["total_results"]<=0\
+            and not self.zero_results_suppression:
+            # This will be an empty list if the input string did not return
+            # any companies.
+
+            print("""We created a list of your results, but the list
+            itself is empty. This is probably due to a company name that the
+            Companies House search engine can't find any matches for.
+            """)
+
+        elif self.by=="id":
+            pass
+
+        else:
+            self.jsonDict = self.json_tree_traverse(["items"])
+
 
     def build_url(self):
         """
@@ -109,40 +131,3 @@ class CHCompany:
         # .response attribute
 
         self.ch_response = self.rr.response
-
-    def parse_company_data(self):
-        """
-        Creates instance of JsonResponseInterpreter class as self.jri
-        Creates attribute self.jsonDict as either:
-
-        1.  Copy of the returned dictionary, if you searched by companies house
-            company number
-
-        2.  List of company-level dictionaries returned by the friendly_string
-            search, if you searched by friendly_string
-        """
-        self.jri = JsonResponseInterpreter(self.ch_response)
-
-        # If we searched by the friendly string, then we get a list of dictionaries
-        # each relating to a company on their books. This list, which is what we
-        # want, is stored as the "items" item.
-
-        if self.by == "friendly_string":
-            # This will be an empty list if the input string did not return
-            # any companies.
-            self.jsonDict = self.jri.json_tree_traverse(["items"])
-
-            if self.jri.jsonDict["total_results"] <= 0 \
-                        and not self.zero_results_suppression:
-                print("""We created a jsonDict of your results, but the dict
-                itself is empty. This is probably due to a company name that the
-                Companies House search engine can't find any matches for.
-                """)
-
-            else:
-                pass
-
-        # We don't need to extract the underlying list, all we need is the
-        # dict of the single company that we searched.
-        else:
-            self.jsonDict = self.jri.jsonDict.copy()
