@@ -113,21 +113,22 @@ So you can see, you just need your Companies House API Key and the company numbe
                      'registered_office_is_in_dispute': False,
                      'can_file': True}
 
-ch.jsonDict is a copy of the .jsonDict attribute of an internal instance of the
-JsonResponseInterpreter class, which is part of the [datagrab library](
+`CHCompany` inherits JsonResponseInterpreter class, which is part of the [datagrab library](
   https://github.com/HEtothe/datagrab
   ).
+So we can access attributes like jsonDict and the json_tree_traverse method.
 
+This is pretty handy if, say, we want to find the city of the registered address.
 
+    >>>>ch.json_tree_traverse(["registered_office_address","locality"])         
+    'Cambridgeshire'
 
+Let's imagine now that we want to see if a company name is available. In that
+case, we'd need to search by a particular substring.
 
+In that case, set the "by" keyword argument to "friendly_string":
 
-
-
-
-
-
-    >>> ch = CHCompany("<my_companies_house_API_key",
+    >>> ch = CHCompany("<my_companies_house_API_key>",
                     company_query_string="ARM",   # What we ask for
                     by="friendly_string", # Search type
                       )
@@ -169,4 +170,6 @@ JsonResponseInterpreter class, which is part of the [datagrab library](
       'snippet': 'ARM CYBERSECURITY '}]
 
 
-Bingo! the company number we're after is '02557590'.
+It's also useful for identifying the company number of your target entity. So in
+this case, if you were looking for the chip designer who revolutionised computing,
+you would be looking for `02557590`.
