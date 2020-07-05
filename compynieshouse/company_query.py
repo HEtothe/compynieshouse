@@ -43,7 +43,7 @@ class CHCompany(JsonResponseInterpreter):
 
         assert by == "id" or by == "friendly_string", \
             "CHCompany constructor accepts only 'friendly_string' to retrieve"\
-            " a list of possible companies, or 'id' to retrieve information"\
+            " a list of possible matches, or 'id' to retrieve information"\
             " on a specific company whose companies house company ID is already"\
             " known to you."
 
