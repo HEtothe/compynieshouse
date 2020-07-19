@@ -320,7 +320,7 @@ This is what such a record looks like:
     >>> from compynieshouse.officer_query import CompanyOfficers
     >>> from datagrab.interpret_response.json_visualize import visualize_json
 
-    >>> cos = CompanyOfficers("***REMOVED***",
+    >>> cos = CompanyOfficers("<my_companies_house_API_key>",
                         "02557590",
                         )
     >>> cos.visualize_json()
