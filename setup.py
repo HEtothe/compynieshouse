@@ -11,7 +11,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="compynieshouse",
-    version="0.0.1",
+    version="0.0.3",
     description="A convenient wrapper for the UK Companies House REST API",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -21,9 +21,9 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.6"
     ],
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["datagrab",]                    ],
+    install_requires=["datagrab>=0.1.3"],
 )

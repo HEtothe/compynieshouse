@@ -4,7 +4,7 @@ JsonResponseInterpreter)
 from datagrab.RESTConnect.basicAuth import BasicAuth
 
 
-class CHCompany(JsonResponseInterpreter):
+class CHCompany(JsonResponseInterpreter, BasicAuth, RetrievedResponse):
 
     """
     Companies House Company
@@ -39,7 +39,8 @@ class CHCompany(JsonResponseInterpreter):
     """
 
     def __init__(self, appKey: str, company_query_string: str, by="id",
-                zero_results_suppression=False):
+                zero_results_suppression=False, additional_request_kwargs=None,
+                request_timeout=15.):
 
         assert by == "id" or by == "friendly_string", \
             "CHCompany constructor accepts only 'friendly_string' to retrieve"\
@@ -48,8 +49,9 @@ class CHCompany(JsonResponseInterpreter):
             " known to you."
 
         #Create the headers based on the basicauth protocol
-        self.basicAuthHeader      = BasicAuth(appKey).basicAuthHeader
-        self.request_kwargs       = {"headers": self.basicAuthHeader}
+        BasicAuth.__init__(self, user=appKey)
+
+        self.additional_request_kwargs = additional_request_kwargs
 
         self.company_query_string = company_query_string
         self.by                   = by
@@ -58,11 +60,20 @@ class CHCompany(JsonResponseInterpreter):
         #Create the request url
         self.build_url()
 
-        # Get the data
-        self.retrieve_company_data()
+        # add any additional required content to http request
+        self.build_request_kwargs()
+
+        # instantiate the RetrievedResponse class
+        RetrievedResponse.__init__(self, url=self.request_url,
+                                    request_kwargs=self.request_kwargs)
+
+        # Request the data and validate the response
+        # This is where HTTP reponse errors will be raised and handled by the
+        # getResponse method of RetrievedResponse
+        self.getValidate(timeout=request_timeout)
 
         # Instantiate JsonResponseInterpreter class
-        super().__init__(self.ch_response)
+        JsonResponseInterpreter.__init__(self,self.response)
 
         # Remove superfluous information from the JSON tree
         # If we searched by the friendly string, then we get a list of dictionaries
@@ -78,12 +89,6 @@ class CHCompany(JsonResponseInterpreter):
             itself is empty. This is probably due to a company name that the
             Companies House search engine can't find any matches for.
             """)
-
-        elif self.by=="id":
-            pass
-
-        else:
-            self.jsonDict = self.json_tree_traverse(["items"])
 
 
     def build_url(self):
@@ -107,27 +112,18 @@ class CHCompany(JsonResponseInterpreter):
 
         self.request_url = self.base_url + self.company_query_string
 
-    def retrieve_company_data(self, timeout=15):
-        """
-        Retrives and validates data using self.request_url and self.request
-        kwargs built at instantiation and in build_url function
 
-        Instantiates self.rr as RequestResponse instance
-        Adds attribute self.ch_response as the raw http response from the API
-        """
+    def build_request_kwargs(self):
 
-        #Instantiate RetrievedResponse class
-        self.rr = RetrievedResponse(url=self.request_url,
-                                    request_kwargs=self.request_kwargs)
+        if self.additional_request_kwargs:
 
-        # Request the data and validate the response
-        # This is where HTTP reponse errors will be raised and handled by the
-        # getResponse method of RetrievedResponse instance rr
+            if "headers" not in self.additional_request_kwargs.keys():
+                self.request_kwargs = {**{'headers':self.basicAuthHeader},
+                                       **self.additional_request_kwargs}
 
-        self.rr.getValidate(timeout=timeout)
+            else:
+                raise Exception("""BasicAuth provides the header based on the appkey
+                that you provide as first argument in CompanyOfficers""")
 
-
-        # Create the ch_response attribute as a view of the RetrievedResponse
-        # .response attribute
-
-        self.ch_response = self.rr.response
+        else:
+            self.request_kwargs = {'headers':self.basicAuthHeader}

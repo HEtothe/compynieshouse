@@ -22,7 +22,8 @@ To download datagrab, either fork this github repo or simply use Pypi via pip.
 ### Retrieve the key information about a specific company
 
 Let's say you're a BI developer and you want an easy way of refreshing your
-the company key information in your CRM system.
+the company key information in your CRM system. You'd first need a way of
+easily checking the Companies House as a single source of truth.
 
 Here's the docstring for the main class, CHCompany:
 
@@ -123,6 +124,62 @@ This is pretty handy if, say, we want to find the city of the registered address
     >>>>ch.json_tree_traverse(["registered_office_address","locality"])         
     'Cambridgeshire'
 
+If we're new to the Companies House schema, we can use `ch.visualize_json()` to
+see the structure.
+
+    Root
+    ├── accounts
+    │   ├── accounting_reference_date
+    │   │   ├── day
+    │   │   └── month
+    │   ├── last_accounts
+    │   │   ├── made_up_to
+    │   │   ├── period_end_on
+    │   │   ├── period_start_on
+    │   │   └── type
+    │   ├── next_accounts
+    │   │   ├── due_on
+    │   │   ├── overdue
+    │   │   ├── period_end_on
+    │   │   └── period_start_on
+    │   ├── next_due
+    │   ├── next_made_up_to
+    │   └── overdue
+    ├── can_file
+    ├── company_name
+    ├── company_number
+    ├── company_status
+    ├── confirmation_statement
+    │   ├── last_made_up_to
+    │   ├── next_due
+    │   ├── next_made_up_to
+    │   └── overdue
+    ├── date_of_creation
+    ├── etag
+    ├── has_been_liquidated
+    ├── has_charges
+    ├── has_insolvency_history
+    ├── jurisdiction
+    ├── last_full_members_list_date
+    ├── links
+    │   ├── charges
+    │   ├── filing_history
+    │   ├── officers
+    │   ├── persons_with_significant_control
+    │   ├── registers
+    │   └── self
+    ├── previous_company_names
+    ├── registered_office_address
+    │   ├── address_line_1
+    │   ├── address_line_2
+    │   ├── locality
+    │   └── postal_code
+    ├── registered_office_is_in_dispute
+    ├── sic_codes
+    ├── type
+    └── undeliverable_registered_office_address
+
+
 Let's imagine now that we want to see if a company name is available. In that
 case, we'd need to search by a particular substring.
 
@@ -133,7 +190,7 @@ In that case, set the "by" keyword argument to "friendly_string":
                     by="friendly_string", # Search type
                       )
 
-    >>> ch.jsonDict[:2]
+    >>> ch.json_tree_traverse(["items"])[:2]
     [{'snippet': '',
       'company_number': '02557590',
       'description': '02557590 - Incorporated on 12 November 1990',
@@ -173,3 +230,183 @@ In that case, set the "by" keyword argument to "friendly_string":
 It's also useful for identifying the company number of your target entity. So in
 this case, if you were looking for the chip designer who revolutionised computing,
 you would be looking for `02557590`.
+
+Now, you've probably noticed that the main payload within the `jsonDict` is under
+the `"items"` key. These `items` are contained in a list -
+because it's the list of items returned by the search. That means that our method
+`ch.visualize_json()` produces an `AttributeError`, because `visualize_json`
+assumes a dictionary.
+
+So `visualize_json` is available as a standalone function
+
+    >>> from datagrab.interpret_response.json_visualize import visualize_json
+    >>> visualize_json(ch.json_tree_traverse(["items"])[0])
+    Root
+    ├── address
+    │   ├── address_line_1
+    │   ├── address_line_2
+    │   ├── locality
+    │   ├── postal_code
+    │   └── premises
+    ├── address_snippet
+    ├── company_number
+    ├── company_status
+    ├── company_type
+    ├── date_of_creation
+    ├── description
+    ├── description_identifier
+    ├── kind
+    ├── links
+    │   └── self
+    ├── matches
+    │   ├── snippet
+    │   └── title
+    ├── snippet
+    └── title
+
+## Who has a stake in this company?
+
+Companies house provides an endpoint to find persons (natural or corporate) with
+significant control.
+
+Here's how to access that:
+
+    >>> from compynieshouse.significant_control_query import SignificantControlQuery
+
+    >>> scq = SignificantControlQuery(
+        appKey="<my_companies_house_API_key>",
+        company_code="02557590")
+
+    >>> scq.visualize_json()
+    Root
+    ├── active_count
+    ├── ceased_count
+    ├── items
+    ├── items_per_page
+    ├── links
+    │   └── self
+    ├── start_index
+    └── total_results
+
+Note again that the key payload is under the `"items"`, which is effectively
+a list of dictionaries.
+
+This is what such a record looks like:
+
+    >>> visualize_json(scq.json_tree_traverse(["items"])[0])
+    Root
+    ├── address
+    │   ├── address_line_1
+    │   ├── country
+    │   ├── locality
+    │   ├── postal_code
+    │   └── premises
+    ├── etag
+    ├── identification
+    │   ├── country_registered
+    │   ├── legal_authority
+    │   ├── legal_form
+    │   ├── place_registered
+    │   └── registration_number
+    ├── kind
+    ├── links
+    │   └── self
+    ├── name
+    ├── natures_of_control
+    └── notified_on
+
+## Who are the company officers?
+
+    >>> from compynieshouse.officer_query import CompanyOfficers
+    >>> from datagrab.interpret_response.json_visualize import visualize_json
+
+    >>> cos = CompanyOfficers("***REMOVED***",
+                        "02557590",
+                        )
+    >>> cos.visualize_json()
+    Root
+    ├── active_count
+    ├── etag
+    ├── inactive_count
+    ├── items
+    ├── items_per_page
+    ├── kind
+    ├── links
+    │   └── self
+    ├── resigned_count
+    ├── start_index
+    └── total_results
+
+
+    >>> officers_records = cos.json_tree_traverse(["items"])[0]
+
+    >>> visualize_json(officers_records)
+    Root
+    ├── address
+    │   ├── address_line_1
+    │   ├── address_line_2
+    │   ├── locality
+    │   └── postal_code
+    ├── appointed_on
+    ├── links
+    │   └── officer
+    │       └── appointments
+    ├── name
+    └── officer_role
+
+## What other appointments does this officer have?
+
+First, we need the ID of the officer:
+
+    >>> officers_records["links"]
+    {'officer': {'appointments': '/officers/4yYi8Ok5MbG3QNg8t05GUZF-u-U/appointments'}}
+
+    >>> from compynieshouse.officer_appointments import OfficerAppointments
+
+    >>> oa = OfficerAppointments("<my_companies_house_API_key>",
+                        "4yYi8Ok5MbG3QNg8t05GUZF-u-U", # officer ID
+                        )
+    >>> oa.visualize_json()
+    Root
+    ├── etag
+    ├── is_corporate_officer
+    ├── items
+    ├── items_per_page
+    ├── kind
+    ├── links
+    │   └── self
+    ├── name
+    ├── start_index
+    └── total_results
+
+    >>> oa.jsonDict["name"]
+    'Carolyn HERZOG'
+
+How many appointments does Carolyn Herzog have?
+
+    >>> len(oa.json_tree_traverse(["items"]))
+    1
+
+Just the one.
+What details about that appointment does Companies House provide us?
+
+    >>> visualize_json(oa.json_tree_traverse(["items"])[0])
+    Root
+    ├── address
+    │   ├── address_line_1
+    │   ├── address_line_2
+    │   ├── locality
+    │   └── postal_code
+    ├── appointed_on
+    ├── appointed_to
+    │   ├── company_name
+    │   ├── company_number
+    │   └── company_status
+    ├── links
+    │   └── company
+    ├── name
+    ├── name_elements
+    │   ├── forename
+    │   ├── surname
+    │   └── title
+    └── officer_role
