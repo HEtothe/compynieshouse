@@ -1,3 +1,5 @@
 **/__pycache__/
 **/compynies_test.py
 **/*.pyc
+**/compynieshouse.egg-info/
+**/dist/
